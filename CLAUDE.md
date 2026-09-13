@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Memory
+
+Durable project memory lives in `lode/` (index: `lode/lode-map.md`). Read it
+before exploring the code. `lode/review/` holds accepted review findings as
+rules about the system; `/lode:gate` enforces them before any push, and
+`/lode:learn` adds to them. `lode/workflow.md` is the repository profile the
+shared `/lode:*` workflow commands read.
+
 ## Project Overview
 
 sidekiq-unique-jobs is a Sidekiq middleware gem that prevents duplicate jobs from being enqueued or executed. It provides sophisticated locking mechanisms using Redis to ensure job uniqueness based on configurable parameters.
@@ -179,6 +187,27 @@ Workers can define `after_unlock` instance or class method for cleanup after loc
 ## Working with Claude in this repo
 
 Commands and agents pin a model tier via frontmatter aliases: `sonnet` for CI/review/TDD specialists, `opus` for orchestration, security, and PR review. Use aliases, not full model IDs, so commands track the latest model in each tier. When spawning subagents for mechanical work (file finding, pattern scans), pass a cheaper model explicitly rather than letting them inherit the session model.
+
+### Commands
+
+The implementation and PR-handling workflows now come from the `lode@zoolutions`
+plugin (enabled in `.claude/settings.json`); they read `lode/workflow.md` for
+everything repository-specific. Two local commands remain because nothing in the
+plugin covers them.
+
+| Command | Purpose |
+|---------|---------|
+| `/lode:lfg` | full implementation workflow: branch off `main` → understand → plan → TDD → verify → PR |
+| `/lode:plan` | read-only planning → a GitHub issue or `lode/plans/` |
+| `/lode:tdd` | RED → GREEN → REFACTOR with RSpec |
+| `/lode:review-pr` | full PR pass: conflicts with `main`, CI failures, then review comments |
+| `/lode:finish-prs` | drive a stack of open PRs to merge-ready, in order |
+| `/lode:debug-flaky` | root-cause an intermittent spec — evidence → repro → stress-proofed fix |
+| `/lode:gate` | the pre-PR gate; the push hook requires it |
+| `/lode:learn` | write accepted review findings into `lode/review/` |
+| `/lode:sync` | keep `lode/` true to the code after a change |
+| `/review-pr` (local) | quick review of a PR against this repo's patterns |
+| `/security` (local) | audit Redis input handling, Lua argument passing, the Web UI's parameters |
 
 ## Common Pitfalls
 

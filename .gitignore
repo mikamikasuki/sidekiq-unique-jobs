@@ -27,3 +27,4 @@ tmp/
 /.tool-versions
 /myapp/yarn-error.log
 .claude/settings.local.json
+/lode/tmp/
