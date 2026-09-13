@@ -182,13 +182,14 @@ these on sight.
 | File | Rule |
 |---|---|
 | `Gemfile.lock`, `gemfiles/*.lock` | not tracked (`.gitignore`) — nothing to merge |
-| `docs/Gemfile.lock`, `docs/bun.lock` | never hand-merge: take the base's, then `cd docs && bundle install` / `bun install` |
+| `docs/Gemfile.lock`, `docs/bun.lock`, `myapp/Gemfile.lock`, `myapp/bun.lock` | the tracked lockfiles; never hand-merge: take the base's, then re-resolve in that directory (`bundle install` for a Gemfile.lock, `bun install` for a bun.lock) |
 | `CHANGELOG.md` | generated: take the base's and re-run `rake changelog` rather than merging hunks |
 | `lib/sidekiq_unique_jobs/version.rb` | take the base's; a version bump belongs to the release, not to a feature branch |
 | `lib/sidekiq_unique_jobs/config.rb` | append-only, base order first: the struct members, the default constants and the `Config.default` arguments are three parallel lists and must stay aligned |
 | `lib/sidekiq_unique_jobs/constants.rb`, `reflections.rb` (`REFLECTIONS`) | union, base order first; these are alphabetical lists |
 | `spec/support/workers/*.rb` | add a new worker rather than merging two option sets into one fixture |
-| `gemfiles/*.gemfile` | regenerate from `Appraisals` |
+| `gemfiles/*.gemfile` | committed source: merge both sides' intent by hand. Regenerating from `Appraisals` is the eventual answer, but `bundle exec appraisal` currently fails on the root `Gemfile`'s `install_if` block (see Commands), so do not rely on it |
+| `lib/sidekiq_unique_jobs/lua/**` | merge as source, then prove it: `bundle exec rspec spec/sidekiq_unique_jobs/script spec/sidekiq_unique_jobs/lock --tag ~perf` (needs Redis) |
 
 ## Verification
 
