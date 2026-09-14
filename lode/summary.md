@@ -15,8 +15,8 @@ a deliberate reduction: **a held lock is two Redis keys** — the `<digest>:LOCK
 hash mapping `job_id` to metadata, and the one global `uniquejobs:digests`
 sorted set indexing every live digest. `UpgradeLocks#upgrade_v8_to_v9`
 (`upgrade_locks.rb:135-176`) deletes up to nine obsolete v8 keys per digest on
-first server start — the digest STRING, `:QUEUED`, `:PRIMED`, `:INFO`, and the
-same set again under the `:RUN` suffix — and `#merge_expiring_digests`
+first server start — the digest STRING, `:QUEUED`, `:PRIMED`, `:INFO` (the base
+`:LOCKED` hash is kept), plus those four and `:LOCKED` under the `:RUN` suffix — and `#merge_expiring_digests`
 (`179-202`) folds `uniquejobs:expiring_digests` into the one ZSET. Three
 invariants govern every change:
 

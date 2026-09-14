@@ -73,9 +73,10 @@ Check a change against these before calling it done.
   before matching, and `UpgradeLocks` deletes the `:RUN` variants too.
 - **A job hash with no `lock` option, and `config.enabled = false`:** both must
   bypass the gem entirely through `unique_disabled?`.
-- **Deprecated keys:** `unique`, `unique_args`, `lock_args`, `unique_prefix`,
-  `unique_args_method`, `lock_expiration` — still read, still reported by the
-  validator.
+- **Deprecated keys:** `unique`, `unique_args`, `lock_args`, `unique_prefix` are
+  still read and reported by `Lock::Validator::DEPRECATED_KEYS`;
+  `unique_args_method` and `lock_expiration` are still read as silent fallbacks
+  (`lock_args.rb`, `lock_ttl.rb`) and never flagged.
 - **A payload that will not parse:** `fetch.lua`, `Orphans::Reaper#active?`,
   `Fetch::Reliable#recover_orphans`, `Lock#build_info` and
   `Helpers#display_lock_args` each meet one and must not raise.

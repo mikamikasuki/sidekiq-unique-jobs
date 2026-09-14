@@ -49,8 +49,8 @@ Accepted review findings about `Orphans::Reaper`, `Server`'s background work and
 - **Proven by:** `spec/sidekiq_unique_jobs/fetch/reliable_spec.rb:"requeues jobs from dead process working lists"` asserts recovery, not ordering
 - **Origin:** PR #942, fixed in c751b7b2
 
-### `Server`'s background methods rescue `StandardError => ex` and log; none of them raise
-- **Holds because:** they run inside Sidekiq's `:startup` hook and inside `TimerTask` threads. An exception there takes down boot or silently kills the timer. `Server.reap` logs the class and message and returns `0`; the mutex helpers rescue and continue, with `reaper_registered?` returning `true` on failure so a process that cannot read Redis never concludes the reaper is dead and steals the role. A bare `rescue` that swallows the exception object is not enough — the message is the only diagnostic a user gets.
+### `Server`'s background methods rescue `StandardError` and never raise; only `reap` and `resurrect_reaper` log what they caught
+- **Holds because:** they run inside Sidekiq's `:startup` hook and inside `TimerTask` threads. An exception there takes down boot or silently kills the timer. `Server.reap` and `#resurrect_reaper` rescue `StandardError => ex` and log the class and message (`reap` returns `0`); `#register_reaper_process`, `#refresh_reaper_mutex`, `#reaper_registered?` and `#release_reaper_mutex` use a bare `rescue StandardError` with no logging and continue, `reaper_registered?` answering `true` on failure so a process that cannot read Redis never concludes the reaper is dead and steals the role. The four silent rescues are a diagnostic gap, not a guarantee: a user gets no message from them.
 - **Where:** `lib/sidekiq_unique_jobs/server.rb.reap`, `.register_reaper_process`, `.refresh_reaper_mutex`, `.reaper_registered?`, `.release_reaper_mutex`, `.resurrect_reaper`
 - **Proven by:** `spec/sidekiq_unique_jobs/server_spec.rb:"returns the count of reaped digests"`
 - **Origin:** PR #946, fixed in ac0d26e9
