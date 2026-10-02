@@ -318,7 +318,7 @@ RSpec.describe SidekiqUniqueJobs::Locksmith do
     end
 
     it "does not share a checked-out connection with a late priming future" do
-      pool = Sidekiq.default_configuration.new_redis_pool(1, "locksmith-race-spec")
+      pool = Sidekiq.default_configuration.new_redis_pool(2, "locksmith-race-spec")
       previous_pool = Thread.current[:sidekiq_redis_pool]
       Thread.current[:sidekiq_redis_pool] = pool
 
@@ -328,18 +328,17 @@ RSpec.describe SidekiqUniqueJobs::Locksmith do
         max_queue: 1,
         fallback_policy: :abort,
       )
-      worker_started = Queue.new
-      release_worker = Queue.new
-      executor.post do
-        worker_started << true
-        release_worker.pop
-      end
-      worker_started.pop
-
       caller_connection = Queue.new
       future_connection = Queue.new
       release_pop = Queue.new
       future_finished = Queue.new
+      connections_from_pool = Queue.new
+      allow(pool).to receive(:with).and_wrap_original do |original, *args, &block|
+        original.call(*args) do |conn|
+          connections_from_pool << conn
+          block.call(conn)
+        end
+      end
       allow(locksmith_one).to receive(:lock!).and_wrap_original do |original, conn, *args, &block|
         caller_connection << conn
         original.call(conn, *args, &block)
@@ -355,16 +354,17 @@ RSpec.describe SidekiqUniqueJobs::Locksmith do
       SidekiqUniqueJobs.use_config(locksmith_executor: executor) do
         locksmith_one.execute { nil }
         checked_out_connection = caller_connection.pop
-        release_worker << true
-
         async_connection = Timeout.timeout(3) { future_connection.pop }
         expect(async_connection).not_to equal(checked_out_connection)
+        expect(pool).to have_received(:with).at_least(:twice)
+        pool_connections = []
+        pool_connections << connections_from_pool.pop until connections_from_pool.empty?
+        expect(pool_connections).to include(async_connection)
 
         release_pop << true
         Timeout.timeout(3) { future_finished.pop }
       end
     ensure
-      release_worker << true if release_worker && release_worker.empty?
       release_pop << true if release_pop && release_pop.empty?
       executor&.shutdown
       executor&.wait_for_termination(3)

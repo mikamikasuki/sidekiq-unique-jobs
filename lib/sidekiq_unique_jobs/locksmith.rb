@@ -298,13 +298,14 @@ module SidekiqUniqueJobs
 
       # NOTE: When debugging, change .value to .value!
       executor = SidekiqUniqueJobs.config.locksmith_executor
+      redis_pool = Sidekiq.redis_pool
       primed_jid = Concurrent::Promises
-        .future_on(executor) do
+        .future_on(executor, redis_pool) do |pool|
           # The outer redis block can time out and return its connection to
           # Sidekiq's pool while this future is still running. Check out a
-          # separate connection here so the future never shares a socket with
-          # a Sidekiq fetcher or another pool user.
-          redis { |red_con| pop_queued(red_con, timeout) }
+          # separate connection from the caller's pool so the future never
+          # shares a socket with a Sidekiq fetcher or uses the internal pool.
+          pool.with { |red_con| pop_queued(red_con, timeout) }
         end
         .value(concurrent_timeout) # Timeout to prevent indefinite blocking
 
